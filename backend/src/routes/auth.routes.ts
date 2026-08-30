@@ -22,6 +22,7 @@ router.get('/google', (req: Request, res: Response, next) => {
   }
   passport.authenticate('google', {
     scope: ['profile', 'email'],
+    prompt: 'select_account',
     session: false,
   })(req, res, next);
 });
