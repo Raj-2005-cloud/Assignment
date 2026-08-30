@@ -5,14 +5,26 @@ import { config } from '../config';
 
 const router = Router();
 
-// Initiate Google OAuth
-router.get(
-  '/google',
+const isGoogleAuthConfigured = () => {
+  return !!(
+    config.GOOGLE_CLIENT_ID &&
+    config.GOOGLE_CLIENT_SECRET &&
+    config.GOOGLE_CLIENT_ID !== 'your_google_client_id' &&
+    config.GOOGLE_CLIENT_ID.trim() !== ''
+  );
+};
+
+// Initiate Google OAuth (falls back gracefully to dev-login if keys aren't provided)
+router.get('/google', (req: Request, res: Response, next) => {
+  if (!isGoogleAuthConfigured()) {
+    console.log('ℹ️ Google OAuth credentials not provided. Redirecting to dev-login');
+    return res.redirect('/api/auth/dev-login');
+  }
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     session: false,
-  })
-);
+  })(req, res, next);
+});
 
 // Google OAuth callback
 router.get(
