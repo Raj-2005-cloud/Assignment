@@ -26,16 +26,30 @@ router.get('/google', (req: Request, res: Response, next) => {
   })(req, res, next);
 });
 
+const getFrontendUrl = (req: Request): string => {
+  const forwardedProto = req.headers['x-forwarded-proto'] as string;
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  if (host && !host.includes('localhost')) {
+    const proto = forwardedProto || 'https';
+    return `${proto}://${host}`;
+  }
+  return config.FRONTEND_URL || 'http://localhost:5173';
+};
+
 // Google OAuth callback
 router.get(
   '/google/callback',
-  passport.authenticate('google', {
-    session: false,
-    failureRedirect: `${config.FRONTEND_URL}/login?error=auth_failed`,
-  }),
+  (req: Request, res: Response, next) => {
+    const frontendBase = getFrontendUrl(req);
+    passport.authenticate('google', {
+      session: false,
+      failureRedirect: `${frontendBase}/login?error=auth_failed`,
+    })(req, res, next);
+  },
   (req: Request, res: Response) => {
     const user = req.user as AuthUser;
     const token = generateToken(user);
+    const frontendBase = getFrontendUrl(req);
 
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', token, {
@@ -45,12 +59,12 @@ router.get(
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    res.redirect(`${config.FRONTEND_URL}/dashboard#token=${token}`);
+    res.redirect(`${frontendBase}/dashboard#token=${token}`);
   }
 );
 
 // Dev / Demo login (creates or logs into demo user)
-router.get('/dev-login', async (_req: Request, res: Response) => {
+router.get('/dev-login', async (req: Request, res: Response) => {
   try {
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient();
@@ -72,6 +86,7 @@ router.get('/dev-login', async (_req: Request, res: Response) => {
 
     const token = generateToken(demoUser);
     const isProd = process.env.NODE_ENV === 'production';
+    const frontendBase = getFrontendUrl(req);
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -80,7 +95,7 @@ router.get('/dev-login', async (_req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.redirect(`${config.FRONTEND_URL}/dashboard#token=${token}`);
+    res.redirect(`${frontendBase}/dashboard#token=${token}`);
   } catch (error) {
     console.error('Dev login error:', error);
     res.status(500).json({ error: 'Dev login failed' });
