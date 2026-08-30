@@ -1,0 +1,76 @@
+# Render Blueprint Specification (render.yaml)
+# Deploy ReachInbox Email Scheduler with 1-click on Render: https://render.com/deploy
+
+services:
+  # -------------------------------------------------------------
+  # 1. Backend Web Service (Node.js API + BullMQ Email Workers)
+  # -------------------------------------------------------------
+  - type: web
+    name: reachinbox-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: "cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build && npx prisma db push"
+    startCommand: "cd backend && npm start"
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: WORKER_CONCURRENCY
+        value: "5"
+      - key: MIN_DELAY_BETWEEN_EMAILS_MS
+        value: "2000"
+      - key: MAX_EMAILS_PER_HOUR
+        value: "200"
+      - key: MAX_EMAILS_PER_HOUR_PER_SENDER
+        value: "50"
+      # Database connection (Points to Render PostgreSQL or SQLite)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reachinbox-postgres
+          property: connectionString
+      # Redis connection (Points to Render Redis or Upstash)
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: reachinbox-redis
+          property: connectionString
+      # Frontend URL
+      - key: FRONTEND_URL
+        sync: false
+        value: http://localhost:5173
+      # Google OAuth (Optional - Instant Demo Login works without keys)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+        value: ""
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+        value: ""
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+        value: ""
+
+  # -------------------------------------------------------------
+  # 2. Redis Key-Value Store (For BullMQ & Rate Limiting)
+  # -------------------------------------------------------------
+  - type: redis
+    name: reachinbox-redis
+    plan: free
+    region: oregon
+    ipAllowList: [] # Internal access only
+
+# ---------------------------------------------------------------
+# 3. PostgreSQL Managed Database
+# ---------------------------------------------------------------
+databases:
+  - name: reachinbox-postgres
+    plan: free
+    region: oregon
+    databaseName: reachinbox_db
+    user: reachinbox
