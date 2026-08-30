@@ -38,11 +38,11 @@ services:
         sync: false
       # Frontend URL
       - key: FRONTEND_URL
-        value: http://localhost:5173
-      # Google OAuth (Optional - Instant Demo Login works without keys)
+        value: "https://reachinbox-api-d945.onrender.com"
+      # Google OAuth Credentials (managed securely in Render Dashboard)
       - key: GOOGLE_CLIENT_ID
-        value: ""
+        sync: false
       - key: GOOGLE_CLIENT_SECRET
-        value: ""
+        sync: false
       - key: GOOGLE_CALLBACK_URL
-        value: ""
+        value: "https://reachinbox-api-d945.onrender.com/api/auth/google/callback"
